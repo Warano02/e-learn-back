@@ -1,0 +1,30 @@
+{
+  "name": "iw-backend",
+  "version": "1.0.0",
+  "description": "the backend of iw project",
+  "homepage": "https://github.com/Warano02/iw-project-backend#readme",
+  "bugs": {
+    "url": "https://github.com/Warano02/iw-project-backend/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Warano02/iw-project-backend.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "main.js",
+  "scripts": {
+    "dev": "nodemon main.js",
+    "start": "node main.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "mongoose": "^9.4.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
