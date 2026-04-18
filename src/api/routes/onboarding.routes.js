@@ -4,6 +4,8 @@ const router = express.Router();
 const UserSettings = require("../../models/userSettings.model");
 const User = require("../../models/user.model");
 const Tag = require("../../models/tag.model");
+const { cookieOptions } = require("../controllers/auth.controller");
+const { signToken } = require("../../utils/jwt");
 
 
 router.get("/", authorize, async (req, res) => {
@@ -17,7 +19,7 @@ router.post('/interests', authorize, async (req, res) => {
     if (!Array.isArray(interests) || interests.length === 0) return res.status(400).json({ msg: "Interests must be a non-empty array", });
     await UserSettings.findOneAndUpdate(
         { user: req.user.id }, { $set: { interests, }, },
-        {returnDocument: "after", upsert: true, }
+        { returnDocument: "after", upsert: true, }
     );
 
     if (req.user.oboardingL === 1) {
@@ -37,7 +39,7 @@ router.post('/education_level', authorize, async (req, res) => {
     }
     await UserSettings.findOneAndUpdate({ user: req.user.id }, { educationLevel: level, skillLevel: skill });
     if (req.user.oboardingL === 2) {
-        await User.findByIdAndUpdate(req.user.id, { oboardingL: 3 });
+        await User.findByIdAndUpdate(req.user.id, { onboarding: 3 });
     }
     res.json({ msg: "Education level updated" });
 })
@@ -46,15 +48,18 @@ router.post('/learning_goal', authorize, async (req, res) => {
     const { goal } = req.body
     if (!goal) return res.status(400).json({ msg: "Goal is required", });
     if (!["job", "improve_skills", "exam", "freelance", "curiosity"].includes(goal)) return res.status(400).json({ msg: "Invalid learning goal" });
-   
+
     await UserSettings.findOneAndUpdate(
-        { user: req.user._id }, { $set: { learningGoal: goal, }, },
+        { user: req.user.id }, { $set: { learningGoal: goal, }, },
         { returnDocument: "after", upsert: true, }
     );
 
-    await User.findByIdAndUpdate(req.user._id, { oboardingL: 4 });
+    await User.findByIdAndUpdate(req.user.id, { onboarding: 4 });
 
-    res.json({ msg: "Learning goal saved, onboarding completed" })
+    res.clearCookie('tmp_token', cookieOptions);
+    res.cookie('token', signToken({ id: req.user.id, role: req.user.role }), cookieOptions);
+
+    return res.json({ msg: "Learning goal saved, onboarding completed" })
 })
 
 

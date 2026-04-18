@@ -3,7 +3,7 @@ const UserSettings = require('../../models/userSettings.model')
 const { signToken, verifyToken } = require('../../utils/jwt');
 const { sendConfirmationEmail } = require("../../lib/emails/userAccountConfirmation");
 
-const cookieOptions = {
+ const cookieOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
@@ -148,4 +148,4 @@ const adminLogin = async (req, res) => {
     }
 }
 
-module.exports = { register, confirmEmail, login, logout, getMe, adminLogin };
+module.exports = { register, confirmEmail, login, logout, getMe, adminLogin ,cookieOptions};
