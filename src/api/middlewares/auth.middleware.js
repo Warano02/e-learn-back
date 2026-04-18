@@ -19,11 +19,23 @@ const protect = async (req, res, next) => {
     }
 };
 
-const authorize = (...roles) => (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
-        return res.status(403).json({ error: true, msg: 'You do not have permission to perform this action' });
+const authorize = async (req, res, next) => {
+    try {
+        const token = req.cookies?.tmp_token;
+        if (!token) return res.status(401).json({ error: true, msg: 'Authentication required' });
+
+        const decoded = verifyToken(token);
+        const user = await User.findById(decoded.id).lean();
+
+        if (!user) return res.status(401).json({ error: true, msg: 'User no longer exists' });
+        if (!user.isActive) return res.status(403).json({ error: true, msg: 'Account has been deactivated' });
+        if (!user.isEmailConfirmed) return res.status(407).json({ error: true, msg: 'Confirm Your email first' });
+
+        req.user = { id: user._id, role: user.role, oboardingL: user.onboarding };
+        next();
+    } catch {
+        return res.status(401).json({ error: true, msg: 'Invalid or expired token' });
     }
-    next();
 };
 
 module.exports = { protect, authorize };

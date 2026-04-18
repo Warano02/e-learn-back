@@ -1,5 +1,6 @@
 const User = require('../../models/user.model');
-const { signToken, verifyEmailToken } = require('../../utils/jwt');
+const UserSettings = require('../../models/userSettings.model')
+const { signToken, verifyToken } = require('../../utils/jwt');
 const { sendConfirmationEmail } = require("../../lib/emails/userAccountConfirmation");
 
 const cookieOptions = {
@@ -20,6 +21,7 @@ const register = async (req, res) => {
         const assignedRole = ['student', 'teacher'].includes(role) ? role : 'student';
 
         const user = await User.create({ name, email, password, role: assignedRole });
+        await UserSettings.create({ user: user._id });
 
         const emailToken = signToken({ id: user._id });
 
@@ -27,7 +29,7 @@ const register = async (req, res) => {
             error: false,
             msg: 'Account created. Please check your email to confirm your account.',
         });
-        
+
         return sendConfirmationEmail(user, emailToken);
     } catch (err) {
         console.log(err);
@@ -42,7 +44,7 @@ const confirmEmail = async (req, res) => {
 
         let decoded;
         try {
-            decoded = verifyEmailToken(token);
+            decoded = verifyToken(token);
         } catch {
             return res.status(400).json({ error: true, msg: 'Invalid or expired confirmation link' });
         }
@@ -56,7 +58,6 @@ const confirmEmail = async (req, res) => {
 
         return res.status(200).json({ error: false, msg: 'Email confirmed successfully' });
     } catch (err) {
-
         return res.status(500).json({ error: true, msg: err.message });
     }
 };
@@ -80,7 +81,7 @@ const login = async (req, res) => {
             return res.status(200).json({
                 error: false,
                 data: {
-                    id: user._id,
+                    email: user.email,
                     name: user.name,
                     level: user.onboarding,
                 },
@@ -92,7 +93,6 @@ const login = async (req, res) => {
         return res.status(200).json({
             error: false,
             data: {
-                id: user._id,
                 name: user.name,
                 avatar: user.avatar,
                 email: user.email,

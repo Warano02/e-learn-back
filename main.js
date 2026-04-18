@@ -9,6 +9,7 @@ const cookieParser = require('cookie-parser');
 app.use(express.json())
     .use(cookieParser())
     .use("/auth", require("./src/api/routes/auth.routes"))
+    .use("/onboarding", require("./src/api/routes/onboarding.routes"))
     .get("/", (req, res) => {
         res.send("Welcome to Take All You Can API");
     });
