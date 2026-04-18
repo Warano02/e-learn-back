@@ -1,13 +1,18 @@
 require("dotenv").config();
 
 const express = require("express");
-const app = express();
-const connectDB = require("./src/config/db");
-const PORT = process.env.PORT || 5000;
 const cookieParser = require('cookie-parser');
+const cors = require("cors");
+
+const connectDB = require("./src/config/db");
 const { protect, adminOnly } = require("./src/api/middlewares/auth.middleware");
 
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+
 app
+    .use(cors())
     .use(express.json())
     .use(cookieParser())
     .use("/auth", require("./src/api/routes/auth.routes"))
