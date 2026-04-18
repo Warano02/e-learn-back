@@ -89,6 +89,7 @@ const login = async (req, res) => {
                 msg: 'Login successful. Please complete onboarding.',
             });
         }
+        res.cookie('token', token, cookieOptions);
 
         return res.status(200).json({
             error: false,
@@ -121,4 +122,30 @@ const getMe = async (req, res) => {
     }
 };
 
-module.exports = { register, confirmEmail, login, logout, getMe };
+
+const adminLogin = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        const user = await User.findOne({ email }).select('+password');
+        if (!user || !(await user.comparePassword(password))) return res.status(401).json({ error: true, msg: 'Invalid credentials' });
+        if (user.role !== 'admin') return res.status(403).json({ error: true, msg: 'Access denied' });
+
+        const token = signToken({ id: user._id, role: user.role });
+
+        res.cookie('token', token, cookieOptions);
+        return res.status(200).json({
+            error: false,
+            data: {
+                name: user.name,
+                avatar: user.avatar,
+                email: user.email,
+                role: user.role,
+            },
+        });
+    } catch (e) {
+
+    }
+}
+
+module.exports = { register, confirmEmail, login, logout, getMe, adminLogin };

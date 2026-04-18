@@ -38,4 +38,9 @@ const authorize = async (req, res, next) => {
     }
 };
 
-module.exports = { protect, authorize };
+const adminOnly = (req, res, next) => {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ error: true, msg: 'Access denied' });
+    next()
+}
+
+module.exports = { protect, authorize, adminOnly };
