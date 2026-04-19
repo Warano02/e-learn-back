@@ -7,12 +7,23 @@ const classroomSchema = new mongoose.Schema(
             required: true,
             trim: true,
         },
+
+        description: {
+            type: String,
+            required: true,
+            trim: true,
+        },
+
+        slogan: {
+            type: String,
+        },
+
         teacher: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
             required: true,
         },
-        
+
         joinCode: {
             type: String,
             required: true,

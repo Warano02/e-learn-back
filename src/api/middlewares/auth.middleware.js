@@ -43,4 +43,9 @@ const adminOnly = (req, res, next) => {
     next()
 }
 
-module.exports = { protect, authorize, adminOnly };
+const teacherOnly = (req, res, next) => {
+    if (!req.user || req.user.role == 'student') return res.status(403).json({ error: true, msg: 'Access denied' });
+    next()
+}
+
+module.exports = { protect, authorize, adminOnly, teacherOnly };

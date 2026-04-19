@@ -5,7 +5,7 @@ const cookieParser = require('cookie-parser');
 const cors = require("cors");
 
 const connectDB = require("./src/config/db");
-const { protect, adminOnly } = require("./src/api/middlewares/auth.middleware");
+const { protect, adminOnly, teacherOnly } = require("./src/api/middlewares/auth.middleware");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -20,6 +20,8 @@ app
     .get("/", (req, res) => res.send("Welcome to Take All You Can API"))
     .use(protect)
     .use('/u', require("./src/api/routes/user.routes"))
+    .use('/cr', require("./src/api/routes/classroom.routes"))
+    .use(teacherOnly)
     .use('/t', require("./src/api/routes/teacher.routes"))
     .use(adminOnly)
     .use('/a', require("./src/api/routes/admin.routes"))
