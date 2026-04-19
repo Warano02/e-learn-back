@@ -19,12 +19,4 @@ exports.createClassrrom = async (req, res) => {
     })
 }
 
-exports.getMyClassRooms = (req, res) => {
-    try {
-        const teahcher = req.user.id
-    } catch (e) {
-        console.log("error occured while trying to fetch teacher own classRoom ", e)
-        res.status(500).json({ success: false, msg: "Internal Server error !" })
-    }
-}
 
