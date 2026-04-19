@@ -19,6 +19,7 @@ app
     .use("/onboarding", require("./src/api/routes/onboarding.routes"))
     .get("/", (req, res) => res.send("Welcome to Take All You Can API"))
     .use(protect)
+    .use('/files', require("./src/api/routes/files.routes"))
     .use('/u', require("./src/api/routes/user.routes"))
     .use('/c', require("./src/api/routes/courses.routes"))
     .use('/cr', require("./src/api/routes/classroom.routes"))

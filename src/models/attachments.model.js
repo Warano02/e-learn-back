@@ -6,7 +6,7 @@ const attachmentsSchema = new mongoose.Schema(
             type: String,
             required: true
         },
-        uiID: {
+        publicId: {
             type: String,
             required: true
         },
@@ -14,6 +14,18 @@ const attachmentsSchema = new mongoose.Schema(
             type: String,
             required: true,
             enum: ["pdf", "video", "image"]
+        },
+        format: String,
+        size: Number,
+        ownerType: {
+            type: String,
+            enum: ["user", "course", "module", "lesson"],
+            required: true,
+        },
+        provider: {
+            type: String,
+            required: true,
+            enum: ["s3", "cloudinary"]
         },
     },
     {
