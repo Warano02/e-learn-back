@@ -20,6 +20,7 @@ app
     .get("/", (req, res) => res.send("Welcome to Take All You Can API"))
     .use(protect)
     .use('/u', require("./src/api/routes/user.routes"))
+    .use('/c', require("./src/api/routes/courses.routes"))
     .use('/cr', require("./src/api/routes/classroom.routes"))
     .use(teacherOnly)
     .use('/t', require("./src/api/routes/teacher.routes"))
