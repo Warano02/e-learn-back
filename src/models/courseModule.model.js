@@ -39,6 +39,5 @@ const courseModuleSchema = new mongoose.Schema(
     }
 );
 
-courseModuleSchema.index({ course: 1, order: 1 }, { unique: true });
 
 module.exports = mongoose.model("CourseModule", courseModuleSchema);
