@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-echo "start services for project"
 
+set -e
+
+echo "Starting containers..."
 docker compose up -d
 
-echo "services started, checking status..."
-docker compose ps
+echo "Waiting Redis..."
+sleep 3
 
-echo "start development server..."
+echo "Launching app..."
 npm run dev
