@@ -38,6 +38,25 @@ exports.CreateCourse = async (req, res) => {
 
     } catch (e) {
         console.log("Error creating course:", e);
-        res.status(500).json({ success: false, msg: "Internal Server Error", e });
+        res.status(500).json({ success: false, msg: "Internal Server Error", });
     }
 };
+
+
+exports.CreateModule = async (req, res) => {
+    try {
+        const { course, description, title } = req.body
+        if (!course || !description || !title) return res.status(400).json({ success: false, msg: "Invalid form data!" });
+        const existingCourse = await Course.findOne({ _id: course }).lean();
+        if (!existingCourse) return res.status(404).json({ success: false, msg: "Course Not exist yet !" });
+        const chapterCount = await CourseModule.countDocuments({ course })
+
+        const chap = await CourseModule.create({ course, title, description, order: chapterCount + 1 })
+
+        return res.json({ success: true, msg: `Chapter ${chapterCount + 1} created successfully`, data: chap });
+
+    } catch (e) {
+        console.log("Error creating course:", e);
+        res.status(500).json({ success: false, msg: "Internal Server Error", });
+    }
+}
