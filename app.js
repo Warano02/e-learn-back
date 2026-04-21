@@ -10,6 +10,7 @@ const app = express();
 
 app.use(cors())
     .use(express.json())
+    .use(express.urlencoded({ extended: true }))
     .use(cookieParser())
     .use("/auth", require("./src/api/routes/auth.routes"))
     .use("/onboarding", require("./src/api/routes/onboarding.routes"))
