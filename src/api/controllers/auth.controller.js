@@ -3,7 +3,7 @@ const UserSettings = require('../../models/userSettings.model')
 const { signToken, verifyToken } = require('../../utils/jwt');
 const { sendConfirmationEmail } = require("../../lib/emails/userAccountConfirmation");
 
- const cookieOptions = {
+const cookieOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
@@ -19,7 +19,7 @@ const register = async (req, res) => {
         if (existingUser) return res.status(409).json({ error: true, msg: 'Email already in use' });
 
         const assignedRole = ['student', 'teacher'].includes(role) ? role : 'student';
-
+  
         const user = await User.create({ name, email, password, role: assignedRole });
         await UserSettings.create({ user: user._id });
 
@@ -84,11 +84,13 @@ const login = async (req, res) => {
                     email: user.email,
                     name: user.name,
                     level: user.onboarding,
+                    role: user.role,
                 },
 
                 msg: 'Login successful. Please complete onboarding.',
             });
         }
+
         res.cookie('token', token, cookieOptions);
 
         return res.status(200).json({
@@ -99,6 +101,7 @@ const login = async (req, res) => {
                 email: user.email,
                 role: user.role,
             },
+            msg: 'Login successful. Please complete onboarding.',
         });
 
     } catch (err) {
@@ -148,4 +151,4 @@ const adminLogin = async (req, res) => {
     }
 }
 
-module.exports = { register, confirmEmail, login, logout, getMe, adminLogin ,cookieOptions};
+module.exports = { register, confirmEmail, login, logout, getMe, adminLogin, cookieOptions };
