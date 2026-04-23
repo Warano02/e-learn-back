@@ -7,6 +7,7 @@ const protect = async (req, res, next) => {
         if (!token) return res.status(401).json({ error: true, msg: 'Authentication required' });
 
         const decoded = verifyToken(token);
+        if (!decoded) return res.status(403).json({ error: true, msg: "Invalid token" })
         const user = await User.findById(decoded.id).lean();
 
         if (!user) return res.status(401).json({ error: true, msg: 'User no longer exists' });

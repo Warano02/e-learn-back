@@ -3,14 +3,72 @@ const CourseModule = require('../../models/courseModule.model')
 const Attachement = require("../../models/attachments.model")
 const Lesson = require("../../models/lesson.model")
 const Quiz = require("../../models/course-quiz.model")
+const User = require('../../models/user.model');
+const Settings = require('../../models/userSettings.model');
+const CourseProgress = require('../../models/courseProgress.model');
+const Enrollment = require('../../models/enrollment.model');
 
 exports.getAllCourses = async (req, res) => {
   try {
-    const { id } = req.user
+    const userId = req.user._id;
 
-  } catch (e) {
-    console.error("Error occured while getting courses ", e)
-    res.status(500).json({ success: false, msg: "Internal server error !" })
+    const settings = await Settings.findOne({ user: userId }).select("interests language").lean();
+    const progresses = await CourseProgress.find({ user: userId, completed: false })
+      .select("course progressPercent lastAccessedAt")
+      .lean();
+
+    const inProgressIds = progresses.map(item => item.course);
+
+    const enrolledClassrooms = await Enrollment.find({ user: userId, status: "active" })
+      .select("classroom")
+      .lean();
+
+    const classroomIds = enrolledClassrooms.map(item => item.classroom);
+
+    const continueCourses = await Course.find({
+      _id: { $in: inProgressIds }
+    })
+      .select("description teacher classroom interests isPublic createdAt")
+      .populate("teacher", "name avatar")
+      .lean();
+
+    const classroomCourses = await Course.find({classroom: { $in: classroomIds }})
+      .select("description teacher classroom interests isPublic createdAt")
+      .populate("teacher", "name avatar")
+      .lean();
+
+    const excludedIds = [...continueCourses.map(item => item._id.toString()),...classroomCourses.map(item => item._id.toString())];
+
+    const publicCourses = await Course.find({
+      isPublic: true,
+      language: settings?.language || "fr",
+      interests: { $in: settings?.interests || [] },
+      _id: { $nin: excludedIds }})
+      .select("description teacher interests createdAt")
+      .populate("teacher", "name avatar")
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .lean();
+
+    const continueFormatted = continueCourses.map(course => {
+      const progress = progresses.find(item => item.course.toString() === course._id.toString());
+      return {
+        ...course,
+        progressPercent: progress?.progressPercent || 0,
+        lastAccessedAt: progress?.lastAccessedAt || null
+      };
+    });
+
+    res.json({
+      continueCourses: continueFormatted,
+      classroomCourses,
+      recommendedCourses: publicCourses
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 }
 
