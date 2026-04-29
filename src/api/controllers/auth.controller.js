@@ -10,6 +10,7 @@ const cookieOptions = {
     maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
+
 const register = async (req, res) => {
     try {
         if (!req.body) return res.status(400).json({ error: true, msg: "No data provided" })
@@ -19,7 +20,7 @@ const register = async (req, res) => {
         if (existingUser) return res.status(409).json({ error: true, msg: 'Email already in use' });
 
         const assignedRole = ['student', 'teacher'].includes(role) ? role : 'student';
-  
+
         const user = await User.create({ name, email, password, role: assignedRole });
         await UserSettings.create({ user: user._id });
 
@@ -80,7 +81,7 @@ const login = async (req, res) => {
             res.cookie('tmp_token', token, cookieOptions);
             return res.status(200).json({
                 error: false,
-                data: {
+                user: {
                     email: user.email,
                     name: user.name,
                     level: user.onboarding,
@@ -95,7 +96,7 @@ const login = async (req, res) => {
 
         return res.status(200).json({
             error: false,
-            data: {
+            user: {
                 name: user.name,
                 avatar: user.avatar,
                 email: user.email,
@@ -116,10 +117,10 @@ const logout = (req, res) => {
 
 const getMe = async (req, res) => {
     try {
-        const user = await User.findById(req.user.id).lean();
+        const user = await User.findById(req.user.id).select("-password -onboarding -isEmailConfirmed -enrolledClassrooms").lean();
         if (!user) return res.status(404).json({ error: true, msg: 'User not found' });
 
-        return res.status(200).json({ error: false, data: user });
+        return res.status(200).json({ error: false, user });
     } catch (err) {
         return res.status(500).json({ error: true, msg: err.message });
     }
