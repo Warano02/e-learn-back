@@ -14,14 +14,12 @@ const cookieOptions = {
 const register = async (req, res) => {
     try {
         if (!req.body) return res.status(400).json({ error: true, msg: "No data provided" })
-        const { name, email, password, role } = req.body;
-        if (!name || !email || !password || !role) return res.status(409).json({ error: true, msg: "invalide data" })
+        const { name, email, password } = req.body;
+        if (!name || !email || !password) return res.status(409).json({ error: true, msg: "invalide data" })
         const existingUser = await User.findOne({ email }).lean();
         if (existingUser) return res.status(409).json({ error: true, msg: 'Email already in use' });
 
-        const assignedRole = ['student', 'teacher'].includes(role) ? role : 'student';
-
-        const user = await User.create({ name, email, password, role: assignedRole });
+        const user = await User.create({ name, email, password, role: "student" });
         await UserSettings.create({ user: user._id });
 
         const emailToken = signToken({ id: user._id });
@@ -65,11 +63,15 @@ const confirmEmail = async (req, res) => {
 
 const login = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { email, password, role = "student" } = req.body;
 
         const user = await User.findOne({ email }).select('+password');
         if (!user || !(await user.comparePassword(password))) {
             return res.status(401).json({ error: true, msg: 'Invalid credentials' });
+        }
+
+        if (user.role !== role) {
+            return res.status(403).json({ error: true, msg: 'Access denied' });
         }
 
         if (!user.isActive) return res.status(403).json({ error: true, msg: 'Account has been deactivated' });

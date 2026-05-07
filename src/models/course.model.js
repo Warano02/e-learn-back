@@ -20,10 +20,10 @@ const courseSchema = new mongoose.Schema(
         },
 
         description: {
-            type: String,
-            required: true
+            type: mongoose.Schema.Types.Mixed,
+            default: null,
         },
-
+        objectives: [String],
         language: {
             type: String,
             required: true,

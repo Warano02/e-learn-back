@@ -10,7 +10,7 @@ const Enrollment = require('../../models/enrollment.model');
 
 exports.getAllCourses = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const userId = req.user.id;
 
     const settings = await Settings.findOne({ user: userId }).select("interests language").lean();
     const progresses = await CourseProgress.find({ user: userId, completed: false })
@@ -32,18 +32,19 @@ exports.getAllCourses = async (req, res) => {
       .populate("teacher", "name avatar")
       .lean();
 
-    const classroomCourses = await Course.find({classroom: { $in: classroomIds }})
+    const classroomCourses = await Course.find({ classroom: { $in: classroomIds } })
       .select("description teacher classroom interests isPublic createdAt")
       .populate("teacher", "name avatar")
       .lean();
 
-    const excludedIds = [...continueCourses.map(item => item._id.toString()),...classroomCourses.map(item => item._id.toString())];
+    const excludedIds = [...continueCourses.map(item => item._id.toString()), ...classroomCourses.map(item => item._id.toString())];
 
     const publicCourses = await Course.find({
       isPublic: true,
       language: settings?.language || "fr",
       interests: { $in: settings?.interests || [] },
-      _id: { $nin: excludedIds }})
+      _id: { $nin: excludedIds }
+    })
       .select("description teacher interests createdAt")
       .populate("teacher", "name avatar")
       .sort({ createdAt: -1 })
@@ -59,15 +60,11 @@ exports.getAllCourses = async (req, res) => {
       };
     });
 
-    res.json({
-      continueCourses: continueFormatted,
-      classroomCourses,
-      recommendedCourses: publicCourses
-    });
+    res.json({ continueCourses: continueFormatted, classroomCourses, recommendedCourses: publicCourses });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: "Internal server error !"
     });
   }
 }

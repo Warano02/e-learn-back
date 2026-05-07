@@ -19,10 +19,7 @@ const lessonSchema = new mongoose.Schema(
             required: true
         },
 
-        content: {
-            type: String,
-            required: true
-        },
+        content: { type: mongoose.Schema.Types.Mixed },
 
         attachment: {
             type: mongoose.Schema.Types.ObjectId,
