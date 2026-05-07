@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require('bcryptjs');
- 
+
 const userSchema = new mongoose.Schema(
     {
         name: {
@@ -29,7 +29,7 @@ const userSchema = new mongoose.Schema(
             default: "student",
         },
 
-        
+
         avatar: {
             type: String,
             default: null,
@@ -50,13 +50,6 @@ const userSchema = new mongoose.Schema(
             type: Boolean,
             default: true,
         },
-
-        enrolledClassrooms: [
-            {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: "Classroom",
-            },
-        ],
     },
     {
         timestamps: true,

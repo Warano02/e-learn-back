@@ -1,4 +1,5 @@
 const ClassRoom = require("../../models/classroom.model")
+const Enrollment = require('../../models/enrollment.model');
 
 exports.createClassrrom = async (req, res) => {
     const { name, description, slogan } = req.body
@@ -19,4 +20,25 @@ exports.createClassrrom = async (req, res) => {
     })
 }
 
+exports.getClassRooms = async (req, res) => {
+    try {
+        const userId = req.user.id
+        const classId = req.query?.classroom
+        if (classId) {
+            const clr = await ClassRoom.findOne({ joinCode: classId }).select("name description slogan joinCode teacher ").populate("teacher", "name avatar -_id").lean()
+            if (!clr) return res.status(404).json({ error: false, message: "Classroom Not found !" })
+            const students = await Enrollment.countDocuments({ classroom: clr._id })
+            return res.json({ error: false, classroom: { ...clr, students } })
+        }
+        const classrooms = await Enrollment.find({ user: userId, status: "active" })
+            .select("classroom joinedAt")
+            .populate("classroom", "name description slogan joinCode")
+            .lean();
 
+        return res.json({ error: false, classrooms })
+
+    } catch (e) {
+        console.log(e)
+        res.statu(500).json({ error: true, message: "Internal Server Error" })
+    }
+}
