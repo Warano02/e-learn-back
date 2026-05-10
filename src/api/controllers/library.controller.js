@@ -1,27 +1,28 @@
 const UserLibrary = require('../../models/userLibrary.model')
 const { Types: { ObjectId } } = require('mongoose')
 
-const getOrCreateLibrary = (userId) => UserLibrary.findOneAndUpdate({ userId }, { $setOnInsert: { userId } }, { upsert: true, new: true })
 const getLibrary = async (req, res) => {
     try {
-        const { collections, favorites } = await getOrCreateLibrary(req.user._id)
-        res.json({ collections, favorites })
+        const collections = await UserLibrary
+            .find({ userId: req.user._id })
+            .populate('courses')
+            .sort({ isPinned: -1, order: 1, createdAt: -1 })
+
+        res.json(collections)
     } catch (err) {
         res.status(500).json({ message: err.message })
     }
 }
 
-const toggleFavorite = async (req, res) => {
+const getCollection = async (req, res) => {
     try {
-        const userId = req.user._id
-        const courseId = new ObjectId(req.params.courseId)
-        const library = await getOrCreateLibrary(userId)
-        const isFavorite = library.favorites.some(f => f.courseId.equals(courseId))
-        const update = isFavorite
-            ? { $pull: { favorites: { courseId } } }
-            : { $push: { favorites: { courseId, addedAt: new Date(), order: library.favorites.length } } }
-        const updated = await UserLibrary.findOneAndUpdate({ userId }, update, { new: true })
-        res.json({ favorited: !isFavorite, favorites: updated.favorites })
+        const collection = await UserLibrary
+            .findOne({ _id: req.params.collectionId, userId: req.user._id })
+            .populate('courses')
+
+        if (!collection) return res.status(404).json({ message: 'Collection not found' })
+
+        res.json(collection)
     } catch (err) {
         res.status(500).json({ message: err.message })
     }
@@ -29,47 +30,52 @@ const toggleFavorite = async (req, res) => {
 
 const createCollection = async (req, res) => {
     try {
-        const userId = req.user._id
-        const { name, description, icon, color, isPublic, tags } = req.body
+        const { name, description, icon, coverImage, isPublic, isPinned } = req.body
+
         if (!name) return res.status(400).json({ message: 'Name is required' })
-        const newCollection = {
-            _id: new ObjectId(),
-            name,
+
+        const total = await UserLibrary.countDocuments({ userId: req.user._id })
+
+        const collection = await UserLibrary.create({
+            userId: req.user._id,
+            name: name.trim(),
             description,
             icon,
-            color,
+            coverImage,
             isPublic,
-            tags: tags ? tags.map(t => t.trim()) : []
-        }
-        const library = await UserLibrary.findOneAndUpdate(
-            { userId },
-            { $setOnInsert: { userId }, $push: { collections: newCollection } },
-            { upsert: true, new: true }
-        )
-        res.status(201).json(library.collections.find(c => c._id.equals(newCollection._id)))
+            isPinned,
+            order: total
+        })
+
+        res.status(201).json(collection)
     } catch (err) {
+        if (err.code === 11000) return res.status(409).json({ message: 'Collection already exists' })
+
         res.status(500).json({ message: err.message })
     }
 }
 
 const updateCollection = async (req, res) => {
     try {
-        const userId = req.user._id
-        const collectionId = new ObjectId(req.params.collectionId)
-        const { name, description, icon, color, isPublic } = req.body
-        const fields = {}
-        if (name) fields['collections.$.name'] = name
-        if (description !== undefined) fields['collections.$.description'] = description
-        if (icon) fields['collections.$.icon'] = icon
-        if (color) fields['collections.$.color'] = color
-        if (isPublic !== undefined) fields['collections.$.isPublic'] = isPublic
+        const { name, description, icon, coverImage, isPublic, isPinned } = req.body
+
+        const data = {}
+
+        if (name !== undefined) data.name = name.trim()
+        if (description !== undefined) data.description = description
+        if (icon !== undefined) data.icon = icon
+        if (coverImage !== undefined) data.coverImage = coverImage
+        if (isPublic !== undefined) data.isPublic = isPublic
+        if (isPinned !== undefined) data.isPinned = isPinned
+
         const updated = await UserLibrary.findOneAndUpdate(
-            { userId, 'collections._id': collectionId },
-            { $set: fields },
+            { _id: req.params.collectionId, userId: req.user._id }, { $set: data },
             { new: true }
         )
+
         if (!updated) return res.status(404).json({ message: 'Collection not found' })
-        res.json(updated.collections.find(c => c._id.equals(collectionId)))
+
+        res.json(updated)
     } catch (err) {
         res.status(500).json({ message: err.message })
     }
@@ -77,14 +83,13 @@ const updateCollection = async (req, res) => {
 
 const deleteCollection = async (req, res) => {
     try {
-        const userId = req.user._id
-        const collectionId = new ObjectId(req.params.collectionId)
-        const updated = await UserLibrary.findOneAndUpdate(
-            { userId },
-            { $pull: { collections: { _id: collectionId } } },
-            { new: true }
-        )
-        if (!updated) return res.status(404).json({ message: 'Collection not found' })
+        const deleted = await UserLibrary.findOneAndDelete({
+            _id: req.params.collectionId,
+            userId: req.user._id
+        })
+
+        if (!deleted) return res.status(404).json({ message: 'Collection not found' })
+
         res.json({ message: 'Collection deleted' })
     } catch (err) {
         res.status(500).json({ message: err.message })
@@ -93,63 +98,117 @@ const deleteCollection = async (req, res) => {
 
 const toggleCourseInCollection = async (req, res) => {
     try {
-        const userId = req.user._id
-        const collectionId = new ObjectId(req.params.collectionId)
-        const courseId = new ObjectId(req.params.courseId)
-        const library = await getOrCreateLibrary(userId)
-        const collection = library.collections.find(c => c._id.equals(collectionId))
-        if (!collection) return res.status(404).json({ message: 'Collection not found' })
-        const alreadyIn = collection.courses.some(c => c.courseId.equals(courseId))
-        const update = alreadyIn
-            ? { $pull: { 'collections.$.courses': { courseId } } }
-            : { $push: { 'collections.$.courses': { courseId, addedAt: new Date(), order: collection.courses.length } } }
-        await UserLibrary.updateOne({ userId, 'collections._id': collectionId }, update)
-        res.json({ added: !alreadyIn, courseId })
-    } catch (err) {
-        res.status(500).json({ message: err.message })
-    }
-}
-
-const reorderCourses = async (req, res) => {
-    try {
-        const userId = req.user._id
-        const collectionId = new ObjectId(req.params.collectionId)
-        const { courses } = req.body
-        if (!Array.isArray(courses)) return res.status(400).json({ message: 'Courses must be an array' })
-        const library = await getOrCreateLibrary(userId)
-        const collection = library.collections.find(c => c._id.equals(collectionId))
-        if (!collection) return res.status(404).json({ message: 'Collection not found' })
-        const reordered = courses.map((courseId, index) => {
-            const existing = collection.courses.find(c => c.courseId.equals(new ObjectId(courseId)))
-            return { ...existing.toObject(), order: index }
+        const collection = await UserLibrary.findOne({
+            _id: req.params.collectionId,
+            userId: req.user._id
         })
-        const updated = await UserLibrary.findOneAndUpdate(
-            { userId, 'collections._id': collectionId },
-            { $set: { 'collections.$.courses': reordered } },
-            { new: true }
+
+        if (!collection) return res.status(404).json({ message: 'Collection not found' })
+
+        const courseId = new ObjectId(req.params.courseId)
+
+        const exists = collection.courses.some(c => c.equals(courseId))
+
+        await UserLibrary.updateOne(
+            { _id: collection._id },
+            exists ? { $pull: { courses: courseId } } : { $addToSet: { courses: courseId } }
         )
-        res.json(updated.collections.find(c => c._id.equals(collectionId)).courses)
+
+        res.json({ added: !exists })
     } catch (err) {
         res.status(500).json({ message: err.message })
     }
 }
 
-const updateCollectionTags = async (req, res) => {
+const removeCourseFromCollection = async (req, res) => {
     try {
-        const userId = req.user._id
-        const collectionId = new ObjectId(req.params.collectionId)
-        const { tags } = req.body
-        if (!Array.isArray(tags)) return res.status(400).json({ message: 'Tags must be an array' })
-        const updated = await UserLibrary.findOneAndUpdate(
-            { userId, 'collections._id': collectionId },
-            { $set: { 'collections.$.tags': tags.map(t => t.trim()) } },
-            { new: true }
-        )
+        const updated = await UserLibrary.findOneAndUpdate({ _id: req.params.collectionId, userId: req.user._id }, { $pull: { courses: req.params.courseId } }, { new: true })
+
         if (!updated) return res.status(404).json({ message: 'Collection not found' })
-        res.json({ tags: updated.collections.find(c => c._id.equals(collectionId)).tags })
+
+        res.json({ message: 'Course removed' })
     } catch (err) {
         res.status(500).json({ message: err.message })
     }
 }
 
-module.exports = { getLibrary, getOrCreateLibrary, toggleFavorite, createCollection, updateCollection, deleteCollection, toggleCourseInCollection, reorderCourses, updateCollectionTags }
+const duplicateCollection = async (req, res) => {
+    try {
+        const collection = await UserLibrary.findOne({
+            _id: req.params.collectionId,
+            userId: req.user._id
+        })
+
+        if (!collection) return res.status(404).json({ message: 'Collection not found' })
+
+        const total = await UserLibrary.countDocuments({
+            userId: req.user._id
+        })
+
+        const duplicated = await UserLibrary.create({
+            userId: req.user._id,
+            name: `${collection.name} Copy`,
+            description: collection.description,
+            icon: collection.icon,
+            coverImage: collection.coverImage,
+            isPublic: false,
+            isPinned: false,
+            order: total,
+            courses: collection.courses
+        })
+
+        res.status(201).json(duplicated)
+    } catch (err) {
+        res.status(500).json({ message: err.message })
+    }
+}
+
+const reorderCollections = async (req, res) => {
+    try {
+        const { collections } = req.body
+
+        if (!Array.isArray(collections)) return res.status(400).json({ message: 'Collections must be an array' })
+
+        await Promise.all(
+            collections.map((id, index) =>
+                UserLibrary.updateOne(
+                    {
+                        _id: id,
+                        userId: req.user._id
+                    },
+                    {
+                        $set: {
+                            order: index
+                        }
+                    }
+                )
+            )
+        )
+
+        res.json({ message: 'Collections reordered' })
+    } catch (err) {
+        res.status(500).json({ message: err.message })
+    }
+}
+
+const getPublicCollections = async (req, res) => {
+    try {
+        const collections = await UserLibrary.find({ isPublic: true }).populate('courses').sort({ createdAt: -1 })
+        res.json(collections)
+    } catch (err) {
+        res.status(500).json({ message: err.message })
+    }
+}
+
+module.exports = {
+    getLibrary,
+    getCollection,
+    createCollection,
+    updateCollection,
+    deleteCollection,
+    toggleCourseInCollection,
+    removeCourseFromCollection,
+    duplicateCollection,
+    reorderCollections,
+    getPublicCollections
+}

@@ -7,26 +7,33 @@ const User = require('../../models/user.model');
 const Settings = require('../../models/userSettings.model');
 const CourseProgress = require('../../models/courseProgress.model');
 const Enrollment = require('../../models/enrollment.model');
-const { getOrCreateLibrary } = require('./library.controller')
-let i = 0
+const Librari = require("../../models/userLibrary.model")
+
 exports.getAllCourses = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.id
 
-    const settings = await Settings.findOne({ user: userId }).select("interests language").lean();
-    const library = await getOrCreateLibrary(userId)
-    const isFavorite = library.favorites.some(f => f.courseId.equals(courseId))
+    const settings = await Settings.findOne({ user: userId })
+      .select("interests language")
+      .lean()
+
     const progresses = await CourseProgress.find({ user: userId, completed: false })
       .select("course progressPercent lastAccessedAt")
-      .lean();
+      .lean()
 
-    const inProgressIds = progresses.map(item => item.course);
+    const favorites = await Librari.findOne({ userId, isSystem: true, name: "Favorites" })
+      .select("courses")
+      .lean()
+
+    const favoriteIds = new Set((favorites?.courses || []).map(id => id.toString()))
+
+    const inProgressIds = progresses.map(item => item.course)
 
     const enrolledClassrooms = await Enrollment.find({ user: userId, status: "active" })
       .select("classroom")
-      .lean();
+      .lean()
 
-    const classroomIds = enrolledClassrooms.map(item => item.classroom);
+    const classroomIds = enrolledClassrooms.map(item => item.classroom)
 
     const continueCourses = await Course.find({
       _id: { $in: inProgressIds }
@@ -34,46 +41,73 @@ exports.getAllCourses = async (req, res) => {
       .select("-explication")
       .populate("teacher", "name avatar")
       .populate("interests", "name slug category")
-      .lean();
+      .lean()
 
     const classroomCourses = await Course.find({ classroom: { $in: classroomIds } })
       .select("-explication")
       .populate("teacher", "name avatar")
       .populate("interests", "name slug category")
-      .lean();
+      .lean()
 
-    const excludedIds = [...continueCourses.map(item => item._id.toString()), ...classroomCourses.map(item => item._id.toString())];
+    const excludedIds = [...continueCourses.map(item => item._id.toString()), ...classroomCourses.map(item => item._id.toString())]
 
     const publicCourses = await Course.find({
       isPublic: true,
       language: settings?.language || "fr",
-      interests: { $in: settings?.interests || [] },
-      _id: { $nin: excludedIds }
+      interests: {
+        $in: settings?.interests || []
+      },
+      _id: {
+        $nin: excludedIds
+      }
     })
       .select("-explication")
       .populate("teacher", "name avatar")
       .populate("interests", "name slug category")
       .sort({ createdAt: -1 })
       .limit(100)
-      .lean();
-    const publicCoursesFormated = publicCourses.map(c => ({ ...c, isFavorite: library.favorites.some(f => f.courseId.equals(c._id)) }))
+      .lean()
 
-    const continueFormatted = continueCourses.map(course => {
-      const progress = progresses.find(item => item.course.toString() === course._id.toString());
-      return {
-        ...course,
-        progressPercent: progress?.progressPercent || 0,
-        lastAccessedAt: progress?.lastAccessedAt || null
-      };
-    });
+    const withFavorite = course => ({
+      ...course,
+      isFavorite: favoriteIds.has(
+        course._id.toString()
+      )
+    })
 
-    res.json({ continueCourses: continueFormatted, classroomCourses, recommendedCourses: publicCoursesFormated, tags: settings.interests.length });
+    const publicCoursesFormatted = publicCourses.map(withFavorite)
+
+    const classroomCoursesFormatted = classroomCourses.map(withFavorite)
+
+    const continueFormatted = continueCourses.map(
+      course => {
+        const progress = progresses.find(
+          item =>
+            item.course.toString() ===
+            course._id.toString()
+        )
+
+        return {
+          ...withFavorite(course),
+          progressPercent:
+            progress?.progressPercent || 0,
+          lastAccessedAt:
+            progress?.lastAccessedAt || null
+        }
+      }
+    )
+
+    res.json({
+      continueCourses: continueFormatted,
+      classroomCourses: classroomCoursesFormatted,
+      recommendedCourses: publicCoursesFormatted,
+      tags: settings?.interests?.length || 0
+    })
+
   } catch (error) {
     console.log(error)
-    res.status(500).json({
-      success: false,
-      message: "Internal server error !"
-    });
+
+    res.status(500).json({ success: false, message: "Internal server error !" })
   }
 }
 

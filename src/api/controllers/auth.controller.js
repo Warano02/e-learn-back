@@ -2,6 +2,7 @@ const User = require('../../models/user.model');
 const UserSettings = require('../../models/userSettings.model')
 const { signToken, verifyToken } = require('../../utils/jwt');
 const { sendConfirmationEmail } = require("../../lib/emails/userAccountConfirmation");
+const createSystemCollections = require('../../core/createSystemCollections');
 
 const cookieOptions = {
     httpOnly: true,
@@ -21,6 +22,7 @@ const register = async (req, res) => {
 
         const user = await User.create({ name, email, password, role: "student" });
         await UserSettings.create({ user: user._id });
+        await createSystemCollections(user._id)
 
         const emailToken = signToken({ id: user._id });
 
@@ -69,8 +71,6 @@ const login = async (req, res) => {
         if (!user || !(await user.comparePassword(password))) {
             return res.status(401).json({ error: true, msg: 'Invalid credentials' });
         }
-
-
 
         if (!user.isActive) return res.status(403).json({ error: true, msg: 'Account has been deactivated' });
         if (!user.isEmailConfirmed) return res.status(403).json({ error: true, msg: 'Please confirm your email before logging in' });
