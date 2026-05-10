@@ -63,16 +63,14 @@ const confirmEmail = async (req, res) => {
 
 const login = async (req, res) => {
     try {
-        const { email, password, role = "student" } = req.body;
+        const { email, password } = req.body;
 
         const user = await User.findOne({ email }).select('+password');
         if (!user || !(await user.comparePassword(password))) {
             return res.status(401).json({ error: true, msg: 'Invalid credentials' });
         }
 
-        if (user.role !== role) {
-            return res.status(403).json({ error: true, msg: 'Access denied' });
-        }
+
 
         if (!user.isActive) return res.status(403).json({ error: true, msg: 'Account has been deactivated' });
         if (!user.isEmailConfirmed) return res.status(403).json({ error: true, msg: 'Please confirm your email before logging in' });
