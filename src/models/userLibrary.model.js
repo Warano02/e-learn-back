@@ -60,6 +60,6 @@ const userLibrarySchema = new Schema({
     timestamps: true
 })
 
-userLibrarySchema.index({ userId: 1, name: 1 }, { unique: true })
+// userLibrarySchema.index({ userId: 1, name: 1 }, { unique: true })
 
 module.exports = mongoose.model('UserLibrary', userLibrarySchema)

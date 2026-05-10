@@ -10,13 +10,14 @@ router.get('/collections', ctrl.getLibrary)
 
 router.get('/collections/public', ctrl.getPublicCollections)
 
-router.get('/collections/:collectionId', ctrl.getCollection)
+router.get('/collections/sys/:verb', ctrl.getSystemCollection)
 
 router.post('/collections', ctrl.createCollection)
 
 router.post('/collections/:collectionId/duplicate', ctrl.duplicateCollection)
 
 router.patch('/collections/reorder', ctrl.reorderCollections)
+router.patch('/collections/sys/:verb/:courseId', ctrl.toggleSystemCourseCollection)
 
 router.patch('/collections/:collectionId', ctrl.updateCollection)
 
