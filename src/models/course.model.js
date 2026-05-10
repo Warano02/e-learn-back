@@ -18,12 +18,20 @@ const courseSchema = new mongoose.Schema(
             required: true,
             default: true
         },
-
+        title: String,
         description: {
             type: mongoose.Schema.Types.Mixed,
             default: null,
         },
         objectives: [String],
+        favicon: {
+            type: String,
+            default: "https://www.google.com/s2/favicons?domain=typescriptlang.org&sz=64"
+        },
+        cover: {
+            type: String,
+            default: null
+        },
         language: {
             type: String,
             required: true,

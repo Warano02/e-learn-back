@@ -7,12 +7,15 @@ const User = require('../../models/user.model');
 const Settings = require('../../models/userSettings.model');
 const CourseProgress = require('../../models/courseProgress.model');
 const Enrollment = require('../../models/enrollment.model');
-
+const { getOrCreateLibrary } = require('./library.controller')
+let i = 0
 exports.getAllCourses = async (req, res) => {
   try {
     const userId = req.user.id;
 
     const settings = await Settings.findOne({ user: userId }).select("interests language").lean();
+    const library = await getOrCreateLibrary(userId)
+    const isFavorite = library.favorites.some(f => f.courseId.equals(courseId))
     const progresses = await CourseProgress.find({ user: userId, completed: false })
       .select("course progressPercent lastAccessedAt")
       .lean();
@@ -28,13 +31,15 @@ exports.getAllCourses = async (req, res) => {
     const continueCourses = await Course.find({
       _id: { $in: inProgressIds }
     })
-      .select("description teacher classroom interests isPublic createdAt")
+      .select("-explication")
       .populate("teacher", "name avatar")
+      .populate("interests", "name slug category")
       .lean();
 
     const classroomCourses = await Course.find({ classroom: { $in: classroomIds } })
-      .select("description teacher classroom interests isPublic createdAt")
+      .select("-explication")
       .populate("teacher", "name avatar")
+      .populate("interests", "name slug category")
       .lean();
 
     const excludedIds = [...continueCourses.map(item => item._id.toString()), ...classroomCourses.map(item => item._id.toString())];
@@ -45,11 +50,13 @@ exports.getAllCourses = async (req, res) => {
       interests: { $in: settings?.interests || [] },
       _id: { $nin: excludedIds }
     })
-      .select("description teacher interests createdAt")
+      .select("-explication")
       .populate("teacher", "name avatar")
+      .populate("interests", "name slug category")
       .sort({ createdAt: -1 })
       .limit(100)
       .lean();
+    const publicCoursesFormated = publicCourses.map(c => ({ ...c, isFavorite: library.favorites.some(f => f.courseId.equals(c._id)) }))
 
     const continueFormatted = continueCourses.map(course => {
       const progress = progresses.find(item => item.course.toString() === course._id.toString());
@@ -60,8 +67,9 @@ exports.getAllCourses = async (req, res) => {
       };
     });
 
-    res.json({ continueCourses: continueFormatted, classroomCourses, recommendedCourses: publicCourses });
+    res.json({ continueCourses: continueFormatted, classroomCourses, recommendedCourses: publicCoursesFormated, tags: settings.interests.length });
   } catch (error) {
+    console.log(error)
     res.status(500).json({
       success: false,
       message: "Internal server error !"
@@ -71,23 +79,22 @@ exports.getAllCourses = async (req, res) => {
 
 exports.CreateCourse = async (req, res) => {
   try {
-    const { name, description, roomID, isPublic = true, explication, interests } = req.body;
+    const { description, roomID, isPublic = true, explication, interests, title } = req.body;
 
-    if (!name || !explication || !interests || !description || (!roomID && !isPublic)) return res.status(400).json({ success: false, msg: "Invalid data format" });
+    if (!explication || !interests || !title || !description || (!roomID && !isPublic)) return res.status(400).json({ success: false, msg: "Invalid data format" });
 
     if (!Array.isArray(interests)) return res.status(400).json({ success: false, msg: "Interest of this course must be an array" });
     const exi = await Attachement.findOne({ _id: explication }).lean()
 
     if (!exi) return res.status(400).json({ success: false, msg: "Explication assets not exist !" })
 
-    const cleanName = name.trim();
     let c
     if (isPublic) {
-      c = await Course.create({ teacher: req.user.id, description, explication, name: cleanName, interests, isPublic, });
+      c = await Course.create({ teacher: req.user.id, description, explication, interests, isPublic, title });
     } else {
-      const existingCourse = await Course.findOne({ name: cleanName, classroom: roomID }).lean();
+      const existingCourse = await Course.findOne({ title, classroom: roomID }).lean();
       if (existingCourse && !isPublic) return res.status(409).json({ success: false, msg: "This course already exists", existingCourse });
-      c = await Course.create({ teacher: req.user.id, description, explication, name: cleanName, interests, isPublic, classroom: roomID });
+      c = await Course.create({ teacher: req.user.id, description, explication, interests, isPublic, classroom: roomID, title });
     }
 
     const firstChapter = await CourseModule.create({ course: c._id, title: "Chapter 1", description: "This is the first chapter of the course", order: 1 })

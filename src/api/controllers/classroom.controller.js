@@ -30,15 +30,76 @@ exports.getClassRooms = async (req, res) => {
             const students = await Enrollment.countDocuments({ classroom: clr._id })
             return res.json({ error: false, classroom: { ...clr, students } })
         }
-        const classrooms = await Enrollment.find({ user: userId, status: "active" })
-            .select("classroom joinedAt")
-            .populate("classroom", "name description slogan joinCode")
+
+        const classrooms = await Enrollment.find({ user: userId, status: { $ne: "left" } })
+            .select("classroom status joinedAt")
+            .populate("classroom", "name description slogan joinCode ")
+            .select("-_id")
             .lean();
 
-        return res.json({ error: false, classrooms })
+        return res.json({
+            error: false, classrooms: classrooms.map(c => {
+                const { classroom, ...data } = c
+                return { ...data, ...classroom }
+            })
+        })
 
     } catch (e) {
         console.log(e)
-        res.statu(500).json({ error: true, message: "Internal Server Error" })
+        res.status(500).json({ error: true, message: "Internal Server Error" })
+    }
+}
+
+exports.joinClassroom = async (req, res) => {
+    try {
+        const userId = req.user.id
+        const classId = req.query?.joinCode
+
+        if (!classId) return res.status(400).json({ error: true, message: "Please provide the classroom identifier !" })
+
+        const clr = await ClassRoom.findOne({ joinCode: classId })
+
+        if (!clr) return res.status(404).json({ error: false, message: "Classroom Not found !" })
+
+        const isEnrolled = await Enrollment.findOne({ user: userId, classroom: clr._id })
+        if (isEnrolled) return res.status(409).json({
+            error: true, message: isEnrolled.status == "active" ? "Your already in this classroom !"
+                : isEnrolled.status == "banned" ? "You can't join this class because you have been ban of it !"
+                    : isEnrolled.status == "left" ? "You can't join this class because you have been left of it !"
+                        : "Your enrollment is pending. Please wait a replied from teacher"
+        })
+
+        await Enrollment.create({ user: userId, classroom: clr._id })
+
+        // Add notification to admin here before sending response 
+
+        res.json({ error: false, message: "Your request to join " + clr.name + " has been send successfully !" })
+    } catch (e) {
+        res.status(500).json({ error: true, message: "Internal Server Error" })
+    }
+}
+
+
+exports.leftClassroom = async (req, res) => {
+    try {
+        const userId = req.user.id
+        const classId = req.query?.joinCode
+
+        if (!classId) return res.status(400).json({ error: true, message: "Please provide the classroom identifier !" })
+
+        const clr = await ClassRoom.findOne({ joinCode: classId })
+
+        if (!clr) return res.status(404).json({ error: false, message: "Classroom Not found !" })
+
+        const isEnrolled = await Enrollment.findOne({ user: userId, classroom: clr._id })
+        if (!isEnrolled || isEnrolled.status == "left") return res.status(409).json({ error: true, message: "Are You damn? youu are not in this classroom yet !" })
+        if (isEnrolled.status == "active") {
+            // Notify users of the classroom
+        }
+        isEnrolled.status = "left"
+        await isEnrolled.save()
+        res.json({ error: false, message: "You have been left the classroom successfully" })
+    } catch (e) {
+        res.status(500).json({ error: true, message: "Internal Server Error" })
     }
 }

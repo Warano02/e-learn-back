@@ -2,7 +2,6 @@ const UserLibrary = require('../../models/userLibrary.model')
 const { Types: { ObjectId } } = require('mongoose')
 
 const getOrCreateLibrary = (userId) => UserLibrary.findOneAndUpdate({ userId }, { $setOnInsert: { userId } }, { upsert: true, new: true })
-
 const getLibrary = async (req, res) => {
     try {
         const { collections, favorites } = await getOrCreateLibrary(req.user._id)
@@ -153,4 +152,4 @@ const updateCollectionTags = async (req, res) => {
     }
 }
 
-module.exports = { getLibrary, toggleFavorite, createCollection, updateCollection, deleteCollection, toggleCourseInCollection, reorderCourses, updateCollectionTags }
+module.exports = { getLibrary, getOrCreateLibrary, toggleFavorite, createCollection, updateCollection, deleteCollection, toggleCourseInCollection, reorderCourses, updateCollectionTags }
