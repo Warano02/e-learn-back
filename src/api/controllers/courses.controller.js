@@ -113,22 +113,23 @@ exports.getAllCourses = async (req, res) => {
 
 exports.CreateCourse = async (req, res) => {
   try {
-    const { description, roomID, isPublic = true, explication, interests, title } = req.body;
+    const { description, roomID, isPublic = true, explication, interests, title, objectives } = req.body;
 
-    if (!explication || !interests || !title || !description || (!roomID && !isPublic)) return res.status(400).json({ success: false, msg: "Invalid data format" });
+    if (!explication || !interests || !objectives || !title || !description || (!roomID && !isPublic)) return res.status(400).json({ success: false, msg: "Invalid data format" });
 
     if (!Array.isArray(interests)) return res.status(400).json({ success: false, msg: "Interest of this course must be an array" });
+    if (!Array.isArray(objectives)) return res.status(400).json({ success: false, msg: "Objectives of this course must be an array" });
     const exi = await Attachement.findOne({ _id: explication }).lean()
 
     if (!exi) return res.status(400).json({ success: false, msg: "Explication assets not exist !" })
 
     let c
     if (isPublic) {
-      c = await Course.create({ teacher: req.user.id, description, explication, interests, isPublic, title });
+      c = await Course.create({ teacher: req.user.id, description, explication, interests, isPublic, title, objectives });
     } else {
       const existingCourse = await Course.findOne({ title, classroom: roomID }).lean();
       if (existingCourse && !isPublic) return res.status(409).json({ success: false, msg: "This course already exists", existingCourse });
-      c = await Course.create({ teacher: req.user.id, description, explication, interests, isPublic, classroom: roomID, title });
+      c = await Course.create({ teacher: req.user.id, description, explication, interests, isPublic, classroom: roomID, title, objectives });
     }
 
     const firstChapter = await CourseModule.create({ course: c._id, title: "Chapter 1", description: "This is the first chapter of the course", order: 1 })

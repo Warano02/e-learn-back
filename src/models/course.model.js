@@ -56,6 +56,6 @@ const courseSchema = new mongoose.Schema(
     }
 );
 
-courseSchema.index({ user: 1, classroom: 1 }, { unique: true });
+courseSchema.index({ teacher: 1, classroom: 1 }, { unique: true });
 
 module.exports = mongoose.model("Course", courseSchema);

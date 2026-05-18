@@ -8,7 +8,7 @@ const { protect, adminOnly, teacherOnly } = require("./src/api/middlewares/auth.
 
 const app = express();
 
-app.use(cors({ origin: ["http://localhost:3000"], credentials: true }))
+app.use(cors({ origin: ["http://localhost:3001"], credentials: true }))
     .use(express.json())
     .use(express.urlencoded({ extended: true }))
     .use(cookieParser())

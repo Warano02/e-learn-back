@@ -93,7 +93,7 @@ const login = async (req, res) => {
         }
 
         res.cookie('token', token, cookieOptions);
-
+        res.cookie("user", JSON.stringify({ name: user.name, avatar: user.avatar, email: user.email, role: user.role, }, cookieOptions))
         return res.status(200).json({
             error: false,
             user: {
@@ -140,7 +140,7 @@ const adminLogin = async (req, res) => {
         res.cookie('token', token, cookieOptions);
         return res.status(200).json({
             error: false,
-            data: {
+            user: {
                 name: user.name,
                 avatar: user.avatar,
                 email: user.email,
