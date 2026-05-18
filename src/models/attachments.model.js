@@ -27,6 +27,7 @@ const attachmentsSchema = new mongoose.Schema(
             required: true,
             enum: ["s3", "cloudinary"]
         },
+        assetId: mongoose.Schema.Types.ObjectId,
     },
     {
         timestamps: true,
