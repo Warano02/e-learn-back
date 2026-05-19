@@ -1,9 +1,13 @@
 const express = require('express');
 const { getMyClassRooms } = require('../controllers/teacher.controller');
 const enrollmentModel = require('../../models/enrollment.model');
+const { getTeacherCourse } = require('../controllers/courses.controller');
 const router = express.Router();
 
 router.get("/classrooms", getMyClassRooms)
+router.get("/courses", getTeacherCourse)
+
+
 
 router.patch("/dec_enrollment", async (req, res) => {
     try {
