@@ -193,6 +193,31 @@ exports.CreateLesson = async (req, res) => {
     return res.status(500).json({ success: false, msg: "Internal Server Error" })
   }
 }
+exports.updateCourse = async (req, res) => {
+  try {
+    const { courseId } = req.params
+    const teacherId = req.user.id
+    const course = await Course.findById(courseId)
+    if (!course) return res.status(404).json({ success: false, message: "Course not found." })
+    if (course.teacher.toString() !== teacherId.toString()) {
+      return res.status(403).json({ success: false, message: "Forbidden." })
+    }
+
+    const allowed = ["isPublic", "description", "objectives", "interests", "title"]
+    allowed.forEach((key) => {
+      if (req.body[key] !== undefined) course[key] = req.body[key]
+    })
+
+    await course.save()
+    const c = await course.populate("interests", "name slug category")
+
+    res.json({ success: true, course: c })
+
+  } catch (err) {
+    console.error("update Course error:", err)
+    res.status(500).json({ success: false, message: "Internal Server Error." })
+  }
+}
 
 exports.getModules = async (req, res) => {
   try {
